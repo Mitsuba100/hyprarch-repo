@@ -24,7 +24,7 @@ jobs:
           cd x86_64
           # Rebuild the DB (Manual tar to ensure compatibility)
           tar -cvzf hyprarch-repo.db.tar.gz *.pkg.tar.zst
-          
+
           # Fix symlinks for GitHub Pages
           rm -f hyprarch-repo.db hyprarch-repo.files
           cp hyprarch-repo.db.tar.gz hyprarch-repo.db
@@ -45,7 +45,7 @@ jobs:
             fi
           done
           echo "</pre><hr></body></html>" >> index.html
-          
+
           # 2. Create index for the Root folder
           cd ..
           echo "<html><head><title>Index of /</title></head><body>" > index.html
