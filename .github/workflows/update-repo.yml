@@ -9,7 +9,7 @@ on:
 jobs:
   update-db:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -18,11 +18,9 @@ jobs:
 
       - name: Setup repo-add tools
         run: |
-          # Download the standalone repo-add script from Arch Linux
           sudo apt-get update && sudo apt-get install -y bsdtar
           curl -L https://gitlab.archlinux.org/pacman/pacman/-/raw/master/scripts/repo-add.sh.in -o repo-add
           chmod +x repo-add
-          # Provide a dummy library path so it runs on Ubuntu
           sed -i 's|@pkgdatadir@|/usr/share/pacman|g' repo-add
 
       - name: Update Repository Database
@@ -30,10 +28,7 @@ jobs:
           cd x86_64
           if ls *.pkg.tar.zst 1> /dev/null 2>&1; then
             echo "Updating database..."
-            # Run our downloaded repo-add
             ../repo-add hyprarch-repo.db.tar.gz *.pkg.tar.zst
-            
-            # Break symlinks for GitHub Pages
             rm -f hyprarch-repo.db hyprarch-repo.files
             cp hyprarch-repo.db.tar.gz hyprarch-repo.db
             cp hyprarch-repo.files.tar.gz hyprarch-repo.files
@@ -41,12 +36,12 @@ jobs:
             echo "No packages found."
             exit 1
           fi
-          
+
       - name: Commit and Push changes
         run: |
+          cd "$GITHUB_WORKSPACE"        # Fix: return to repo root!
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
           git add x86_64/
           if ! git diff-index --quiet HEAD; then
             git commit -m "Automated database update"
