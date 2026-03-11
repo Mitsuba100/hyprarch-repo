@@ -9,7 +9,9 @@ on:
 jobs:
   update-db:
     runs-on: ubuntu-latest
-    container: archlinux:latest
+    container:
+      image: archlinux:latest
+      options: --user root # Ensure we are running as root to match container ownership
     
     steps:
       - name: Checkout code
@@ -21,30 +23,29 @@ jobs:
         run: |
           pacman -Sy --noconfirm pacman git
           
+      - name: Fix Git Ownership
+        run: |
+          # This tells Git to ignore ownership checks for every folder on this runner
+          git config --global --add safe.directory '*'
+          
       - name: Update Repository Database
         run: |
-          # Use the environment variable to trust the directory
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          
           cd x86_64
           if ls *.pkg.tar.zst 1> /dev/null 2>&1; then
             echo "Updating database..."
             repo-add hyprarch-repo.db.tar.gz *.pkg.tar.zst
             
-            # Break symlinks for GitHub Pages compatibility
+            # Break symlinks for GitHub Pages
             rm -f hyprarch-repo.db hyprarch-repo.files
             cp hyprarch-repo.db.tar.gz hyprarch-repo.db
             cp hyprarch-repo.files.tar.gz hyprarch-repo.files
           else
-            echo "No packages found in x86_64/."
+            echo "No packages found."
             exit 1
           fi
           
       - name: Commit and Push changes
         run: |
-          # Re-verify safe directory for this specific shell step
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
