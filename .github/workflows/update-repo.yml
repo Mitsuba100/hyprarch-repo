@@ -10,10 +10,6 @@ jobs:
   update-db:
     runs-on: ubuntu-latest
     container: archlinux:latest
-    # This ensures the container knows exactly where the workspace is
-    defaults:
-      run:
-        working-directory: /__w/hyprarch-repo/hyprarch-repo
     
     steps:
       - name: Checkout code
@@ -27,24 +23,28 @@ jobs:
           
       - name: Update Repository Database
         run: |
-          # Explicitly trust the directory for the bot user
-          git config --global --add safe.directory /__w/hyprarch-repo/hyprarch-repo
+          # Use the environment variable to trust the directory
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           
           cd x86_64
           if ls *.pkg.tar.zst 1> /dev/null 2>&1; then
             echo "Updating database..."
             repo-add hyprarch-repo.db.tar.gz *.pkg.tar.zst
             
-            # Break symlinks for GitHub Pages
+            # Break symlinks for GitHub Pages compatibility
             rm -f hyprarch-repo.db hyprarch-repo.files
             cp hyprarch-repo.db.tar.gz hyprarch-repo.db
             cp hyprarch-repo.files.tar.gz hyprarch-repo.files
           else
-            echo "No packages found."
+            echo "No packages found in x86_64/."
+            exit 1
           fi
           
       - name: Commit and Push changes
         run: |
+          # Re-verify safe directory for this specific shell step
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
