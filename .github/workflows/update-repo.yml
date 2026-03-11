@@ -3,37 +3,45 @@ name: Update Arch Repository
 on:
   push:
     paths:
-      - 'x86_64/*.pkg.tar.zst'  # Only runs when you add a new package file
-  workflow_dispatch:           # Allows you to run it manually
+      - 'x86_64/*.pkg.tar.zst'
+  workflow_dispatch:
 
 jobs:
   update-db:
     runs-on: ubuntu-latest
-    container: archlinux:latest  # Runs inside an actual Arch Linux environment
+    container: 
+      image: archlinux:latest
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetches all history so push works better
 
+      - name: Install Dependencies
+        run: |
+          pacman -Sy --noconfirm pacman git  # Added 'git' here
+          
       - name: Update Repository Database
         run: |
-          # Install necessary tools
-          pacman -Sy --noconfirm pacman
-          
           cd x86_64
-          echo "Adding packages to database..."
+          # Update the database
           repo-add hyprarch-repo.db.tar.gz *.pkg.tar.zst
           
-          echo "Fixing symlinks for GitHub Pages..."
+          # Force break symlinks for GitHub Pages compatibility
           rm -f hyprarch-repo.db hyprarch-repo.files
           cp hyprarch-repo.db.tar.gz hyprarch-repo.db
           cp hyprarch-repo.files.tar.gz hyprarch-repo.files
           
       - name: Commit and Push changes
         run: |
-          git config --global --add safe.directory /github/workspace
+          # This line fixes the 'dubious ownership' error in containers
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
           git add x86_64/
-          git commit -m "Automated database update" || echo "No changes to commit"
+          # Only commit if there are actually changes to the .db files
+          git diff-index --quiet HEAD || git commit -m "Automated database update"
           git push
