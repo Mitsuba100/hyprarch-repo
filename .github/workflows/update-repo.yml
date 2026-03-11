@@ -18,7 +18,7 @@ jobs:
 
       - name: Setup repo-add tools
         run: |
-          sudo apt-get update && sudo apt-get install -y bsdtar
+          sudo apt-get update && sudo apt-get install -y libarchive-tools
           curl -L https://gitlab.archlinux.org/pacman/pacman/-/raw/master/scripts/repo-add.sh.in -o repo-add
           chmod +x repo-add
           sed -i 's|@pkgdatadir@|/usr/share/pacman|g' repo-add
