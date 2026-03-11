@@ -48,6 +48,28 @@ jobs:
           done
           echo "</ul></body></html>" >> index.html
     
+      - name: Generate Python-Style Index
+        run: |
+          cd x86_64
+          # Start the HTML file
+          echo "<html><head><title>Index of /x86_64/</title></head><body>" > index.html
+          echo "<h1>Index of /x86_64/</h1><hr><pre>" >> index.html
+          
+          # Add the 'Parent Directory' link
+          echo "<a href='../'>../</a>" >> index.html
+          
+          # Loop through every file in the folder and make a link
+          for file in *; do
+            # Don't list the index.html file itself
+            if [ "$file" != "index.html" ]; then
+              # Get file size for that authentic look (optional)
+              size=$(du -sh "$file" | cut -f1)
+              echo "<a href='$file'>$file</a>                     $(date -r "$file" '+%d-%b-%Y %H:%M')    $size" >> index.html
+            fi
+          done
+          
+          echo "</pre><hr></body></html>" >> index.html
+
       - name: Commit and Push changes
         run: |
           git config --global user.name "github-actions[bot]"
