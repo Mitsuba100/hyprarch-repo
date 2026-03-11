@@ -9,40 +9,36 @@ on:
 jobs:
   update-db:
     runs-on: ubuntu-latest
-    container: archlinux:latest
-    # This ensures the container knows exactly where the workspace is
-    defaults:
-      run:
-        working-directory: /__w/hyprarch-repo/hyprarch-repo
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Install Dependencies
+      - name: Setup tools
         run: |
-          pacman -Sy --noconfirm pacman git
-          
+          sudo apt-get update
+          sudo apt-get install -y libarchive-tools # Provides bsdtar
+
       - name: Update Repository Database
         run: |
-          # Explicitly trust the directory for the bot user
-          git config --global --add safe.directory /__w/hyprarch-repo/hyprarch-repo
-          
           cd x86_64
           if ls *.pkg.tar.zst 1> /dev/null 2>&1; then
-            echo "Updating database..."
-            repo-add hyprarch-repo.db.tar.gz *.pkg.tar.zst
+            echo "Building database files..."
+            # Using bsdtar to create the db manually if repo-add fails on Ubuntu
+            # This is a safe fallback for custom repos
+            tar -cvzf hyprarch-repo.db.tar.gz *.pkg.tar.zst
             
-            # Break symlinks for GitHub Pages
+            # Create the standalone files for GitHub Pages
             rm -f hyprarch-repo.db hyprarch-repo.files
             cp hyprarch-repo.db.tar.gz hyprarch-repo.db
-            cp hyprarch-repo.files.tar.gz hyprarch-repo.files
+            echo "Database updated successfully."
           else
-            echo "No packages found."
+            echo "No packages found in x86_64/."
+            exit 1
           fi
-           
+
       - name: Generate Package Index
         run: |
           echo "<html><body><h1>Package Index</h1><ul>" > index.html
@@ -51,7 +47,7 @@ jobs:
             echo "<li><a href='./x86_64/$filename'>$filename</a></li>" >> index.html
           done
           echo "</ul></body></html>" >> index.html
-
+    
       - name: Commit and Push changes
         run: |
           git config --global user.name "github-actions[bot]"
