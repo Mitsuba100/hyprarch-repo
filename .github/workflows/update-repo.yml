@@ -10,28 +10,29 @@ jobs:
   update-db:
     runs-on: ubuntu-latest
     container: archlinux:latest
+    # This ensures the container knows exactly where the workspace is
+    defaults:
+      run:
+        working-directory: /__w/hyprarch-repo/hyprarch-repo
     
     steps:
-      # Step 1: Actually download the code so it IS a git repo
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # Step 2: Install tools
       - name: Install Dependencies
         run: |
           pacman -Sy --noconfirm pacman git
           
-      # Step 3: Run the database update
       - name: Update Repository Database
         run: |
-          # Tell git to trust the directory immediately
+          # Explicitly trust the directory for the bot user
           git config --global --add safe.directory /__w/hyprarch-repo/hyprarch-repo
           
           cd x86_64
           if ls *.pkg.tar.zst 1> /dev/null 2>&1; then
-            echo "Packages found. Updating database..."
+            echo "Updating database..."
             repo-add hyprarch-repo.db.tar.gz *.pkg.tar.zst
             
             # Break symlinks for GitHub Pages
@@ -39,11 +40,9 @@ jobs:
             cp hyprarch-repo.db.tar.gz hyprarch-repo.db
             cp hyprarch-repo.files.tar.gz hyprarch-repo.files
           else
-            echo "No .pkg.tar.zst files found."
-            exit 1
+            echo "No packages found."
           fi
           
-      # Step 4: Push back to the repo
       - name: Commit and Push changes
         run: |
           git config --global user.name "github-actions[bot]"
