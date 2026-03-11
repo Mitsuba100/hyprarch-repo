@@ -51,3 +51,4 @@ jobs:
           else
             echo "Nothing to commit."
           fi
+ 
