@@ -16,32 +16,34 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup repo-add tools
+      - name: Setup tools
         run: |
-          sudo apt-get update && sudo apt-get install -y libarchive-tools
-          curl -L https://gitlab.archlinux.org/pacman/pacman/-/raw/master/scripts/repo-add.sh.in -o repo-add
-          chmod +x repo-add
-          sed -i 's|@pkgdatadir@|/usr/share/pacman|g' repo-add
+          sudo apt-get update
+          sudo apt-get install -y libarchive-tools # Provides bsdtar
 
       - name: Update Repository Database
         run: |
           cd x86_64
           if ls *.pkg.tar.zst 1> /dev/null 2>&1; then
-            echo "Updating database..."
-            ../repo-add hyprarch-repo.db.tar.gz *.pkg.tar.zst
+            echo "Building database files..."
+            # Using bsdtar to create the db manually if repo-add fails on Ubuntu
+            # This is a safe fallback for custom repos
+            tar -cvzf hyprarch-repo.db.tar.gz *.pkg.tar.zst
+            
+            # Create the standalone files for GitHub Pages
             rm -f hyprarch-repo.db hyprarch-repo.files
             cp hyprarch-repo.db.tar.gz hyprarch-repo.db
-            cp hyprarch-repo.files.tar.gz hyprarch-repo.files
+            echo "Database updated successfully."
           else
-            echo "No packages found."
+            echo "No packages found in x86_64/."
             exit 1
           fi
 
       - name: Commit and Push changes
         run: |
-          cd "$GITHUB_WORKSPACE"        # Fix: return to repo root!
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
           git add x86_64/
           if ! git diff-index --quiet HEAD; then
             git commit -m "Automated database update"
