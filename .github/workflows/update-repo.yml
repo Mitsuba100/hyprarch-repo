@@ -1,0 +1,39 @@
+name: Update Arch Repository
+
+on:
+  push:
+    paths:
+      - 'x86_64/*.pkg.tar.zst'  # Only runs when you add a new package file
+  workflow_dispatch:           # Allows you to run it manually
+
+jobs:
+  update-db:
+    runs-on: ubuntu-latest
+    container: archlinux:latest  # Runs inside an actual Arch Linux environment
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Update Repository Database
+        run: |
+          # Install necessary tools
+          pacman -Sy --noconfirm pacman
+          
+          cd x86_64
+          echo "Adding packages to database..."
+          repo-add hyprarch-repo.db.tar.gz *.pkg.tar.zst
+          
+          echo "Fixing symlinks for GitHub Pages..."
+          rm -f hyprarch-repo.db hyprarch-repo.files
+          cp hyprarch-repo.db.tar.gz hyprarch-repo.db
+          cp hyprarch-repo.files.tar.gz hyprarch-repo.files
+          
+      - name: Commit and Push changes
+        run: |
+          git config --global --add safe.directory /github/workspace
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add x86_64/
+          git commit -m "Automated database update" || echo "No changes to commit"
+          git push
