@@ -17,68 +17,50 @@ jobs:
           fetch-depth: 0
 
       - name: Setup tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libarchive-tools # Provides bsdtar
+        run: sudo apt-get update && sudo apt-get install -y libarchive-tools
 
       - name: Update Repository Database
         run: |
           cd x86_64
-          if ls *.pkg.tar.zst 1> /dev/null 2>&1; then
-            echo "Building database files..."
-            # Using bsdtar to create the db manually if repo-add fails on Ubuntu
-            # This is a safe fallback for custom repos
-            tar -cvzf hyprarch-repo.db.tar.gz *.pkg.tar.zst
-            
-            # Create the standalone files for GitHub Pages
-            rm -f hyprarch-repo.db hyprarch-repo.files
-            cp hyprarch-repo.db.tar.gz hyprarch-repo.db
-            echo "Database updated successfully."
-          else
-            echo "No packages found in x86_64/."
-            exit 1
-          fi
+          # Rebuild the DB (Manual tar to ensure compatibility)
+          tar -cvzf hyprarch-repo.db.tar.gz *.pkg.tar.zst
+          
+          # Fix symlinks for GitHub Pages
+          rm -f hyprarch-repo.db hyprarch-repo.files
+          cp hyprarch-repo.db.tar.gz hyprarch-repo.db
+          cp hyprarch-repo.files.tar.gz hyprarch-repo.files
 
-      - name: Generate Package Index
+      - name: Generate Python-style Index
         run: |
-          echo "<html><body><h1>Package Index</h1><ul>" > index.html
-          for file in x86_64/*.pkg.tar.zst; do
-            filename=$(basename "$file")
-            echo "<li><a href='./x86_64/$filename'>$filename</a></li>" >> index.html
-          done
-          echo "</ul></body></html>" >> index.html
-    
-      - name: Generate Python-Style Index
-        run: |
+          # 1. Create index for x86_64 folder
           cd x86_64
-          # Start the HTML file
           echo "<html><head><title>Index of /x86_64/</title></head><body>" > index.html
           echo "<h1>Index of /x86_64/</h1><hr><pre>" >> index.html
-          
-          # Add the 'Parent Directory' link
           echo "<a href='../'>../</a>" >> index.html
-          
-          # Loop through every file in the folder and make a link
           for file in *; do
-            # Don't list the index.html file itself
             if [ "$file" != "index.html" ]; then
-              # Get file size for that authentic look (optional)
               size=$(du -sh "$file" | cut -f1)
-              echo "<a href='$file'>$file</a>                     $(date -r "$file" '+%d-%b-%Y %H:%M')    $size" >> index.html
+              date=$(date -r "$file" '+%d-%b-%Y %H:%M')
+              echo "<a href='$file'>$file</a>$(printf '%*s' $((50 - ${#file})) '') $date    $size" >> index.html
             fi
           done
+          echo "</pre><hr></body></html>" >> index.html
           
+          # 2. Create index for the Root folder
+          cd ..
+          echo "<html><head><title>Index of /</title></head><body>" > index.html
+          echo "<h1>Index of /</h1><hr><pre>" >> index.html
+          echo "<a href='x86_64/'>x86_64/</a>" >> index.html
           echo "</pre><hr></body></html>" >> index.html
 
       - name: Commit and Push changes
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
-          git add x86_64/
+          git add .
           if ! git diff-index --quiet HEAD; then
-            git commit -m "Automated database update"
+            git commit -m "Automated database and index update"
             git push
           else
-            echo "Nothing to commit."
+            echo "Nothing to change."
           fi
