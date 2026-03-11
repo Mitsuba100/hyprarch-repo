@@ -9,39 +9,45 @@ on:
 jobs:
   update-db:
     runs-on: ubuntu-latest
-    container: 
-      image: archlinux:latest
+    container: archlinux:latest
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetches all history so push works better
+          fetch-depth: 0
 
       - name: Install Dependencies
         run: |
-          pacman -Sy --noconfirm pacman git  # Added 'git' here
+          pacman -Sy --noconfirm pacman git
           
       - name: Update Repository Database
         run: |
           cd x86_64
-          # Update the database
-          repo-add hyprarch-repo.db.tar.gz *.pkg.tar.zst
-          
-          # Force break symlinks for GitHub Pages compatibility
-          rm -f hyprarch-repo.db hyprarch-repo.files
-          cp hyprarch-repo.db.tar.gz hyprarch-repo.db
-          cp hyprarch-repo.files.tar.gz hyprarch-repo.files
+          # Check if any .zst files exist before running repo-add
+          if ls *.pkg.tar.zst 1> /dev/null 2>&1; then
+            echo "Packages found. Updating database..."
+            repo-add hyprarch-repo.db.tar.gz *.pkg.tar.zst
+            
+            # Fix symlinks for GitHub Pages
+            rm -f hyprarch-repo.db hyprarch-repo.files
+            cp hyprarch-repo.db.tar.gz hyprarch-repo.db
+            cp hyprarch-repo.files.tar.gz hyprarch-repo.files
+          else
+            echo "No .pkg.tar.zst files found. Skipping database update."
+          fi
           
       - name: Commit and Push changes
         run: |
-          # This line fixes the 'dubious ownership' error in containers
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
           git add x86_64/
-          # Only commit if there are actually changes to the .db files
-          git diff-index --quiet HEAD || git commit -m "Automated database update"
-          git push
+          # Only push if there's actually a new database to upload
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "Automated database update"
+            git push
+          else
+            echo "Nothing to commit."
+          fi
