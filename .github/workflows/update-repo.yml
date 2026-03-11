@@ -9,9 +9,6 @@ on:
 jobs:
   update-db:
     runs-on: ubuntu-latest
-    container:
-      image: archlinux:latest
-      options: --user root # Ensure we are running as root to match container ownership
     
     steps:
       - name: Checkout code
@@ -19,21 +16,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install Dependencies
+      - name: Setup repo-add tools
         run: |
-          pacman -Sy --noconfirm pacman git
-          
-      - name: Fix Git Ownership
-        run: |
-          # This tells Git to ignore ownership checks for every folder on this runner
-          git config --global --add safe.directory '*'
-          
+          # Download the standalone repo-add script from Arch Linux
+          sudo apt-get update && sudo apt-get install -y bsdtar
+          curl -L https://gitlab.archlinux.org/pacman/pacman/-/raw/master/scripts/repo-add.sh.in -o repo-add
+          chmod +x repo-add
+          # Provide a dummy library path so it runs on Ubuntu
+          sed -i 's|@pkgdatadir@|/usr/share/pacman|g' repo-add
+
       - name: Update Repository Database
         run: |
           cd x86_64
           if ls *.pkg.tar.zst 1> /dev/null 2>&1; then
             echo "Updating database..."
-            repo-add hyprarch-repo.db.tar.gz *.pkg.tar.zst
+            # Run our downloaded repo-add
+            ../repo-add hyprarch-repo.db.tar.gz *.pkg.tar.zst
             
             # Break symlinks for GitHub Pages
             rm -f hyprarch-repo.db hyprarch-repo.files
