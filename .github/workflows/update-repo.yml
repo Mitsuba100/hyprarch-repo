@@ -22,36 +22,66 @@ jobs:
       - name: Update Repository Database
         run: |
           cd x86_64
-          # Rebuild the DB (Manual tar to ensure compatibility)
+          # Rebuild the DB
           tar -cvzf hyprarch-repo.db.tar.gz *.pkg.tar.zst
+          # Ensure a files archive exists
+          cp hyprarch-repo.db.tar.gz hyprarch-repo.files.tar.gz
 
-          # Fix symlinks for GitHub Pages
+          # Fix symlinks for GitHub Pages (actual files instead of symlinks)
           rm -f hyprarch-repo.db hyprarch-repo.files
           cp hyprarch-repo.db.tar.gz hyprarch-repo.db
           cp hyprarch-repo.files.tar.gz hyprarch-repo.files
 
       - name: Generate Python-style Index
         run: |
-          # 1. Create index for x86_64 folder
+          # 1. Create the BASIC PYTHON-STYLE index for the x86_64 folder
           cd x86_64
-          echo "<html><head><title>Index of /x86_64/</title></head><body>" > index.html
+          echo "<html><head><title>Index of /x86_64/</title></head><body style='font-family: monospace;'>" > index.html
           echo "<h1>Index of /x86_64/</h1><hr><pre>" >> index.html
           echo "<a href='../'>../</a>" >> index.html
           for file in *; do
             if [ "$file" != "index.html" ]; then
               size=$(du -sh "$file" | cut -f1)
               date=$(date -r "$file" '+%d-%b-%Y %H:%M')
-              echo "<a href='$file'>$file</a>$(printf '%*s' $((50 - ${#file})) '') $date    $size" >> index.html
+              # Formatted alignment for the directory listing
+              printf "<a href='%s'>%s</a>%-$(($(printf '%s' "$file" | wc -c) > 50 ? 1 : 50 - $(printf '%s' "$file" | wc -c)))s %s %8s\n" "$file" "$file" "" "$date" "$size" >> index.html
             fi
           done
           echo "</pre><hr></body></html>" >> index.html
 
-          # 2. Create index for the Root folder
+          # 2. Create the STYLED landing page for the Root folder
           cd ..
-          echo "<html><head><title>Index of /</title></head><body>" > index.html
-          echo "<h1>Index of /</h1><hr><pre>" >> index.html
-          echo "<a href='x86_64/'>x86_64/</a>" >> index.html
-          echo "</pre><hr></body></html>" >> index.html
+          cat <<EOF > index.html
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>HyprArch Repository</title>
+              <style>
+                  body { font-family: sans-serif; margin: 40px; line-height: 1.6; background: #2e3440; color: #eceff4; }
+                  a { color: #88c0d0; text-decoration: none; font-weight: bold; }
+                  a:hover { text-decoration: underline; }
+                  .container { max-width: 800px; margin: auto; background: #3b4252; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+                  h1 { border-bottom: 2px solid #4c566a; padding-bottom: 10px; color: #81a1c1; }
+                  pre { background: #2e3440; padding: 15px; border-radius: 5px; color: #ebcb8b; overflow-x: auto; border: 1px solid #4c566a; }
+                  .dir-link { background: #434c5e; padding: 15px 25px; border-radius: 8px; display: inline-block; margin-top: 20px; border: 1px solid #4c566a; }
+              </style>
+          </head>
+          <body>
+              <div class="container">
+                  <h1>🚀 HyprArch Custom Repository</h1>
+                  <p>To use this repository, add these lines to the bottom of your <code>/etc/pacman.conf</code>:</p>
+                  <pre>[hyprarch-repo]\nSigLevel = Optional TrustAll\nServer = https://hyprarch-repo.stuple.net/\$arch</pre>
+                  
+                  <h2>📦 Available Packages</h2>
+                  <div class="dir-link">
+                      <a href="./x86_64/">📁 Browse x86_64 Repository Index</a>
+                  </div>
+                  <hr style="margin-top: 30px; border: 0; border-top: 1px solid #4c566a;">
+                  <p><small>Database last updated: $(date -u '+%Y-%m-%d %H:%M:%S') UTC</small></p>
+              </div>
+          </body>
+          </html>
+          EOF
 
       - name: Commit and Push changes
         run: |
@@ -59,7 +89,7 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
           if ! git diff-index --quiet HEAD; then
-            git commit -m "Automated database and index update"
+            git commit -m "Automated database and hybrid index update"
             git push
           else
             echo "Nothing to change."
