@@ -24,15 +24,14 @@ jobs:
           cd x86_64
           # Rebuild the DB
           tar -cvzf hyprarch-repo.db.tar.gz *.pkg.tar.zst
-          # Ensure a files archive exists
           cp hyprarch-repo.db.tar.gz hyprarch-repo.files.tar.gz
 
-          # Fix symlinks for GitHub Pages (actual files instead of symlinks)
+          # Fix symlinks for GitHub Pages
           rm -f hyprarch-repo.db hyprarch-repo.files
           cp hyprarch-repo.db.tar.gz hyprarch-repo.db
           cp hyprarch-repo.files.tar.gz hyprarch-repo.files
 
-      - name: Generate Python-style Index
+      - name: Generate Indices
         run: |
           # 1. Create the BASIC PYTHON-STYLE index for the x86_64 folder
           cd x86_64
@@ -43,13 +42,12 @@ jobs:
             if [ "$file" != "index.html" ]; then
               size=$(du -sh "$file" | cut -f1)
               date=$(date -r "$file" '+%d-%b-%Y %H:%M')
-              # Formatted alignment for the directory listing
               printf "<a href='%s'>%s</a>%-$(($(printf '%s' "$file" | wc -c) > 50 ? 1 : 50 - $(printf '%s' "$file" | wc -c)))s %s %8s\n" "$file" "$file" "" "$date" "$size" >> index.html
             fi
           done
           echo "</pre><hr></body></html>" >> index.html
 
-          # 2. Create the STYLED landing page for the Root folder
+          # 2. Create YOUR SPECIFIC LANDING PAGE for the Root folder
           cd ..
           cat <<EOF > index.html
           <!DOCTYPE html>
@@ -58,26 +56,27 @@ jobs:
               <title>HyprArch Repository</title>
               <style>
                   body { font-family: sans-serif; margin: 40px; line-height: 1.6; background: #2e3440; color: #eceff4; }
-                  a { color: #88c0d0; text-decoration: none; font-weight: bold; }
+                  a { color: #88c0d0; text-decoration: none; }
                   a:hover { text-decoration: underline; }
-                  .container { max-width: 800px; margin: auto; background: #3b4252; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-                  h1 { border-bottom: 2px solid #4c566a; padding-bottom: 10px; color: #81a1c1; }
-                  pre { background: #2e3440; padding: 15px; border-radius: 5px; color: #ebcb8b; overflow-x: auto; border: 1px solid #4c566a; }
-                  .dir-link { background: #434c5e; padding: 15px 25px; border-radius: 8px; display: inline-block; margin-top: 20px; border: 1px solid #4c566a; }
+                  .container { max-width: 800px; margin: auto; background: #3b4252; padding: 20px; border-radius: 8px; }
+                  h1 { border-bottom: 2px solid #4c566a; padding-bottom: 10px; }
+                  pre { background: #2e3440; padding: 15px; border-radius: 5px; color: #ebcb8b; }
               </style>
           </head>
           <body>
               <div class="container">
                   <h1>🚀 HyprArch Custom Repository</h1>
-                  <p>To use this repository, add these lines to the bottom of your <code>/etc/pacman.conf</code>:</p>
-                  <pre>[hyprarch-repo]\nSigLevel = Optional TrustAll\nServer = https://hyprarch-repo.stuple.net/\$arch</pre>
+                  <p>To use this repository, add the following to your <code>/etc/pacman.conf</code>:</p>
+                  <pre>[hyprarch-repo]
+          SigLevel = Optional TrustAll
+          Server = https://hyprarch-repo.stuple.net/\$arch</pre>
                   
                   <h2>📦 Available Packages</h2>
-                  <div class="dir-link">
-                      <a href="./x86_64/">📁 Browse x86_64 Repository Index</a>
-                  </div>
-                  <hr style="margin-top: 30px; border: 0; border-top: 1px solid #4c566a;">
-                  <p><small>Database last updated: $(date -u '+%Y-%m-%d %H:%M:%S') UTC</small></p>
+                  <ul>
+                      <li><a href="./x86_64/">Browse x86_64 Packages</a></li>
+                  </ul>
+                  <hr>
+                  <p><small>Automated by GitHub Actions</small></p>
               </div>
           </body>
           </html>
