@@ -25,9 +25,8 @@ jobs:
             echo "ERROR: GPG_PRIVATE_KEY secret is empty!"
             exit 1
           fi
-          # Import and set trust to avoid prompt errors
+          # Import the key. We skip ownertrust to avoid fingerprint syntax errors.
           echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --import --batch --yes
-          echo "236328A7F2C2001E:6:" | gpg --import-ownertrust --batch
 
       - name: Update Repository Database
         run: |
@@ -36,8 +35,8 @@ jobs:
           
           mkdir -p db_temp
           
-          # GPG Arguments to prevent 'Inappropriate ioctl'
-          # We force loopback pinentry so it doesn't look for a real keyboard/screen
+          # GPG Arguments: batch mode + loopback pinentry to avoid 'ioctl' errors.
+          # If your key has a password, add --passphrase "${{ secrets.GPG_PASSPHRASE }}" to the line below.
           GPG_OPTS="--batch --yes --pinentry-mode loopback --local-user 236328A7F2C2001E"
 
           for pkg in *.pkg.tar.zst; do
@@ -143,7 +142,7 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
           if ! git diff-index --quiet HEAD; then
-            git commit -m "Fix GPG ioctl error and rebuild signed DB"
+            git commit -m "Fix GPG trust error and finalize signed repo"
             git push
           else
             echo "Nothing to change."
