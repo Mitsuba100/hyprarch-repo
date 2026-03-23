@@ -6,25 +6,36 @@
         body { font-family: sans-serif; margin: 40px; line-height: 1.6; background: #2e3440; color: #eceff4; }
         a { color: #88c0d0; text-decoration: none; }
         a:hover { text-decoration: underline; }
-        .container { max-width: 800px; margin: auto; background: #3b4252; padding: 20px; border-radius: 8px; }
-        h1 { border-bottom: 2px solid #4c566a; padding-bottom: 10px; }
-        pre { background: #2e3440; padding: 15px; border-radius: 5px; color: #ebcb8b; }
+        .container { max-width: 900px; margin: auto; background: #3b4252; padding: 20px; border-radius: 8px; }
+        h1 { border-bottom: 2px solid #4c566a; padding-bottom: 10px; color: #81a1c1; }
+        h2 { color: #a3be8c; margin-top: 30px; }
+        pre { background: #2e3440; padding: 15px; border-radius: 5px; color: #ebcb8b; overflow-x: auto; border: 1px solid #4c566a; }
+        code { color: #d08770; }
+        .step { background: #434c5e; padding: 10px 15px; border-left: 4px solid #81a1c1; margin: 10px 0; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🚀 HyprArch Custom Repository</h1>
-        <p>To use this repository, add the following to your <code>/etc/pacman.conf</code>:</p>
+        
+        <h2>1. Add the GPG Key</h2>
+        <p>Run this command to trust the repository maintainer (Stuart Drew):</p>
+        <pre>curl -s https://hyprarch-repo.stuple.net/x86_64/pubkey.gpg | sudo pacman-key -a - && sudo pacman-key --lsign-key 236328A7F2C2001E</pre>
+
+        <h2>2. Configure Pacman</h2>
+        <p>Add the following to the bottom of <code>/etc/pacman.conf</code>:</p>
         <pre>[hyprarch-repo]
 SigLevel = Required DatabaseOptional
 Server = https://hyprarch-repo.stuple.net/$arch</pre>
         
-        <h2>📦 Available Packages</h2>
-        <ul>
-            <li><a href="./x86_64/">Browse x86_64 Packages</a></li>
-        </ul>
-        <hr>
-        <p><small>Automated by GitHub Actions</small></p>
+        <h2>3. Sync and Install</h2>
+        <div class="step">
+            <code>sudo pacman -Sy HyprArch-hyprland-git</code>
+        </div>
+
+        <hr style="margin-top:40px; border: 0; border-top: 1px solid #4c566a;">
+        <p><a href="./x86_64/">📁 Browse File Index</a></p>
+        <p><small>Automated by GitHub Actions • Last updated: Mon Mar 23 15:21:36 UTC 2026</small></p>
     </div>
 </body>
 </html>
