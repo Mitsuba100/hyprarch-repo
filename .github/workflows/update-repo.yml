@@ -17,38 +17,48 @@ jobs:
           fetch-depth: 0
 
       - name: Setup tools
-        run: sudo apt-get update && sudo apt-get install -y libarchive-tools
+        run: sudo apt-get update && sudo apt-get install -y libarchive-tools gpg
+
+      - name: Import GPG Key
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --import --batch
 
       - name: Update Repository Database
         run: |
           cd x86_64
-          # Remove old DB files
-          rm -f hyprarch-repo.db hyprarch-repo.db.tar.gz hyprarch-repo.files hyprarch-repo.files.tar.gz
+          # Remove old DB and sig files
+          rm -f hyprarch-repo.db* hyprarch-repo.files*
           
-          # Create a temporary directory for metadata
           mkdir -p db_temp
           
-          # Extract metadata from each package and put it into the DB structure
           for pkg in *.pkg.tar.zst; do
+            # Sign the package if a signature doesn't exist
+            if [ ! -f "$pkg.sig" ]; then
+              gpg --detach-sign --batch --no-armor --local-user 236328A7F2C2001E "$pkg"
+            fi
+            
             pkgname=$(bsdtar -xOf "$pkg" .PKGINFO | grep "^pkgname =" | cut -d' ' -f3)
             pkgver=$(bsdtar -xOf "$pkg" .PKGINFO | grep "^pkgver =" | cut -d' ' -f3)
             mkdir -p "db_temp/$pkgname-$pkgver"
             bsdtar -xOf "$pkg" .PKGINFO > "db_temp/$pkgname-$pkgver/desc"
-            # Add file size and build date to desc
+            
             echo -e "\n%FILENAME%\n$pkg" >> "db_temp/$pkgname-$pkgver/desc"
             echo -e "\n%CSIZE%\n$(stat -c%s "$pkg")" >> "db_temp/$pkgname-$pkgver/desc"
+            echo -e "\n%PGPSIG%\n$(gpg --detach-sign --stdout --no-armor --local-user 236328A7F2C2001E "$pkg" | base64 | tr -d '\n')" >> "db_temp/$pkgname-$pkgver/desc"
           done
           
-          # Compress the metadata into a real Arch DB
           cd db_temp
           tar -c * | gzip -9 > ../hyprarch-repo.db.tar.gz
           cd ..
-          rm -rf db_temp
-
-          # Create the required symlinks/copies for GitHub Pages
+          
+          # Sign the database itself
+          gpg --detach-sign --batch --no-armor --local-user 236328A7F2C2001E hyprarch-repo.db.tar.gz
+          
+          # Finalize files
           cp hyprarch-repo.db.tar.gz hyprarch-repo.db
+          cp hyprarch-repo.db.tar.gz.sig hyprarch-repo.db.sig
           cp hyprarch-repo.db.tar.gz hyprarch-repo.files
-          cp hyprarch-repo.db.tar.gz hyprarch-repo.files.tar.gz
+          rm -rf db_temp
 
       - name: Generate Subfolder Index
         run: |
@@ -57,7 +67,7 @@ jobs:
           echo "<h1>Index of /x86_64/</h1><hr><pre>" >> index.html
           echo "<a href='../'>../</a>" >> index.html
           for file in *; do
-            if [ "$file" != "index.html" ]; then
+            if [[ "$file" != "index.html" ]]; then
               size=$(du -sh "$file" | cut -f1)
               date=$(date -r "$file" '+%d-%b-%Y %H:%M')
               printf "<a href='%s'>%s</a>%-$(($(printf '%s' "$file" | wc -c) > 50 ? 1 : 50 - $(printf '%s' "$file" | wc -c)))s %s %8s\n" "$file" "$file" "" "$date" "$size" >> index.html
@@ -85,7 +95,7 @@ jobs:
                   <h1>🚀 HyprArch Custom Repository</h1>
                   <p>To use this repository, add the following to your <code>/etc/pacman.conf</code>:</p>
                   <pre>[hyprarch-repo]
-          SigLevel = Optional TrustAll
+          SigLevel = Required DatabaseOptional
           Server = https://hyprarch-repo.stuple.net/$arch</pre>
                   
                   <h2>📦 Available Packages</h2>
@@ -104,7 +114,7 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
           if ! git diff-index --quiet HEAD; then
-            git commit -m "Manual DB generation and fixed indices"
+            git commit -m "Signed database and packages with GPG 236328A7F2C2001E"
             git push
           else
             echo "Nothing to change."
