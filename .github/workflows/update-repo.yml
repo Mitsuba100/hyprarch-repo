@@ -22,11 +22,17 @@ jobs:
       - name: Update Repository Database
         run: |
           cd x86_64
-          # Rebuild the DB
-          tar -cvzf hyprarch-repo.db.tar.gz *.pkg.tar.zst
-          cp hyprarch-repo.db.tar.gz hyprarch-repo.files.tar.gz
+          # Download a repo-add script that works on Ubuntu
+          curl -L https://raw.githubusercontent.com/anthraxx/pacman-repo-add/master/repo-add -o repo-add
+          chmod +x repo-add
+          
+          # Use the real tool to build the database pacman expects
+          ./repo-add hyprarch-repo.db.tar.gz *.pkg.tar.zst
+          
+          # Clean up the tool so it doesn't get pushed to the repo
+          rm repo-add
 
-          # Fix symlinks for GitHub Pages
+          # Fix symlinks for GitHub Pages (actual files instead of symlinks)
           rm -f hyprarch-repo.db hyprarch-repo.files
           cp hyprarch-repo.db.tar.gz hyprarch-repo.db
           cp hyprarch-repo.files.tar.gz hyprarch-repo.files
@@ -68,8 +74,8 @@ jobs:
                   <h1>🚀 HyprArch Custom Repository</h1>
                   <p>To use this repository, add the following to your <code>/etc/pacman.conf</code>:</p>
                   <pre>[hyprarch-repo]
-          SigLevel = Optional TrustAll
-          Server = https://hyprarch-repo.stuple.net/\$arch</pre>
+SigLevel = Optional TrustAll
+Server = https://hyprarch-repo.stuple.net/\$arch</pre>
                   
                   <h2>📦 Available Packages</h2>
                   <ul>
@@ -88,7 +94,7 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
           if ! git diff-index --quiet HEAD; then
-            git commit -m "Automated database and hybrid index update"
+            git commit -m "Fixed DB format and updated indices"
             git push
           else
             echo "Nothing to change."
