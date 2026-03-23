@@ -29,10 +29,10 @@ jobs:
           # Use the real tool to build the database pacman expects
           ./repo-add hyprarch-repo.db.tar.gz *.pkg.tar.zst
           
-          # Clean up the tool so it doesn't get pushed to the repo
+          # Clean up the tool
           rm repo-add
 
-          # Fix symlinks for GitHub Pages (actual files instead of symlinks)
+          # Fix symlinks for GitHub Pages
           rm -f hyprarch-repo.db hyprarch-repo.files
           cp hyprarch-repo.db.tar.gz hyprarch-repo.db
           cp hyprarch-repo.files.tar.gz hyprarch-repo.files
@@ -55,38 +55,38 @@ jobs:
 
           # 2. Create YOUR SPECIFIC LANDING PAGE for the Root folder
           cd ..
-          cat <<EOF > index.html
-          <!DOCTYPE html>
-          <html>
-          <head>
-              <title>HyprArch Repository</title>
-              <style>
-                  body { font-family: sans-serif; margin: 40px; line-height: 1.6; background: #2e3440; color: #eceff4; }
-                  a { color: #88c0d0; text-decoration: none; }
-                  a:hover { text-decoration: underline; }
-                  .container { max-width: 800px; margin: auto; background: #3b4252; padding: 20px; border-radius: 8px; }
-                  h1 { border-bottom: 2px solid #4c566a; padding-bottom: 10px; }
-                  pre { background: #2e3440; padding: 15px; border-radius: 5px; color: #ebcb8b; }
-              </style>
-          </head>
-          <body>
-              <div class="container">
-                  <h1>🚀 HyprArch Custom Repository</h1>
-                  <p>To use this repository, add the following to your <code>/etc/pacman.conf</code>:</p>
-                  <pre>[hyprarch-repo]
+          cat <<'EOF' > index.html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HyprArch Repository</title>
+    <style>
+        body { font-family: sans-serif; margin: 40px; line-height: 1.6; background: #2e3440; color: #eceff4; }
+        a { color: #88c0d0; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .container { max-width: 800px; margin: auto; background: #3b4252; padding: 20px; border-radius: 8px; }
+        h1 { border-bottom: 2px solid #4c566a; padding-bottom: 10px; }
+        pre { background: #2e3440; padding: 15px; border-radius: 5px; color: #ebcb8b; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 HyprArch Custom Repository</h1>
+        <p>To use this repository, add the following to your <code>/etc/pacman.conf</code>:</p>
+        <pre>[hyprarch-repo]
 SigLevel = Optional TrustAll
-Server = https://hyprarch-repo.stuple.net/\$arch</pre>
-                  
-                  <h2>📦 Available Packages</h2>
-                  <ul>
-                      <li><a href="./x86_64/">Browse x86_64 Packages</a></li>
-                  </ul>
-                  <hr>
-                  <p><small>Automated by GitHub Actions</small></p>
-              </div>
-          </body>
-          </html>
-          EOF
+Server = https://hyprarch-repo.stuple.net/$arch</pre>
+        
+        <h2>📦 Available Packages</h2>
+        <ul>
+            <li><a href="./x86_64/">Browse x86_64 Packages</a></li>
+        </ul>
+        <hr>
+        <p><small>Automated by GitHub Actions</small></p>
+    </div>
+</body>
+</html>
+EOF
 
       - name: Commit and Push changes
         run: |
@@ -94,7 +94,7 @@ Server = https://hyprarch-repo.stuple.net/\$arch</pre>
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
           if ! git diff-index --quiet HEAD; then
-            git commit -m "Fixed DB format and updated indices"
+            git commit -m "Fixed DB format and index indentation"
             git push
           else
             echo "Nothing to change."
