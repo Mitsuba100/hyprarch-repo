@@ -126,7 +126,7 @@ jobs:
                   <h1>HyprArch Custom Repository</h1>
                   
                   <h2>1. Add the GPG Key</h2>
-                  <p>Run this command to trust the repository maintainer (Stuart Drew):</p>
+                  <p>Run this command to trust the repository maintainer (Mitsuba100):</p>
                   <pre>curl -s https://hyprarch-repo.stuple.net/x86_64/pubkey.gpg | sudo pacman-key -a - && sudo pacman-key --lsign-key 236328A7F2C2001E</pre>
 
                   <h2>2. Configure Pacman</h2>
