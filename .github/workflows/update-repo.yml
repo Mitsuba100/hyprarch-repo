@@ -21,40 +21,60 @@ jobs:
 
       - name: Import GPG Key
         run: |
+          # Ensure you have added GPG_PRIVATE_KEY to your GitHub Secrets!
           echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --import --batch
 
       - name: Update Repository Database
         run: |
           cd x86_64
-          # Remove old DB and sig files
+          # Remove old DB and sig files to ensure a clean rebuild
           rm -f hyprarch-repo.db* hyprarch-repo.files*
           
           mkdir -p db_temp
           
           for pkg in *.pkg.tar.zst; do
-            # Sign the package if a signature doesn't exist
-            if [ ! -f "$pkg.sig" ]; then
-              gpg --detach-sign --batch --no-armor --local-user 236328A7F2C2001E "$pkg"
-            fi
+            # 1. Sign the package file
+            gpg --detach-sign --batch --no-armor --local-user 236328A7F2C2001E "$pkg"
             
+            # 2. Extract and sanitize metadata
+            # We filter out comments (#) to avoid pacman sync errors
             pkgname=$(bsdtar -xOf "$pkg" .PKGINFO | grep "^pkgname =" | cut -d' ' -f3)
             pkgver=$(bsdtar -xOf "$pkg" .PKGINFO | grep "^pkgver =" | cut -d' ' -f3)
-            mkdir -p "db_temp/$pkgname-$pkgver"
-            bsdtar -xOf "$pkg" .PKGINFO > "db_temp/$pkgname-$pkgver/desc"
             
-            echo -e "\n%FILENAME%\n$pkg" >> "db_temp/$pkgname-$pkgver/desc"
-            echo -e "\n%CSIZE%\n$(stat -c%s "$pkg")" >> "db_temp/$pkgname-$pkgver/desc"
-            echo -e "\n%PGPSIG%\n$(gpg --detach-sign --stdout --no-armor --local-user 236328A7F2C2001E "$pkg" | base64 | tr -d '\n')" >> "db_temp/$pkgname-$pkgver/desc"
+            mkdir -p "db_temp/$pkgname-$pkgver"
+            
+            # Create the 'desc' file with required Pacman formatting
+            {
+              echo "%NAME%"
+              echo "$pkgname"
+              echo ""
+              echo "%VERSION%"
+              echo "$pkgver"
+              echo ""
+              # Pull other fields from PKGINFO but skip comments and already added fields
+              bsdtar -xOf "$pkg" .PKGINFO | grep -v "^#" | grep -v "^pkgname" | grep -v "^pkgver"
+              echo ""
+              echo "%FILENAME%"
+              echo "$pkg"
+              echo ""
+              echo "%CSIZE%"
+              echo "$(stat -c%s "$pkg")"
+              echo ""
+              echo "%PGPSIG%"
+              gpg --detach-sign --stdout --no-armor --local-user 236328A7F2C2001E "$pkg" | base64 | tr -d '\n'
+              echo ""
+            } > "db_temp/$pkgname-$pkgver/desc"
           done
           
+          # 3. Pack the database
           cd db_temp
           tar -c * | gzip -9 > ../hyprarch-repo.db.tar.gz
           cd ..
           
-          # Sign the database itself
+          # 4. Sign the database itself
           gpg --detach-sign --batch --no-armor --local-user 236328A7F2C2001E hyprarch-repo.db.tar.gz
           
-          # Finalize files
+          # 5. Create final symlink-replacements for GitHub Pages
           cp hyprarch-repo.db.tar.gz hyprarch-repo.db
           cp hyprarch-repo.db.tar.gz.sig hyprarch-repo.db.sig
           cp hyprarch-repo.db.tar.gz hyprarch-repo.files
@@ -114,7 +134,7 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
           if ! git diff-index --quiet HEAD; then
-            git commit -m "Signed database and packages with GPG 236328A7F2C2001E"
+            git commit -m "Full rebuild: Signed DB and Packages (Fixed Metadata)"
             git push
           else
             echo "Nothing to change."
