@@ -25,7 +25,6 @@ jobs:
             echo "ERROR: GPG_PRIVATE_KEY secret is empty!"
             exit 1
           fi
-          # Import the key. We skip ownertrust to avoid fingerprint syntax errors.
           echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --import --batch --yes
 
       - name: Update Repository Database
@@ -35,13 +34,12 @@ jobs:
           
           mkdir -p db_temp
           
-          # GPG Arguments: batch mode + loopback pinentry to avoid 'ioctl' errors.
-          # If your key has a password, add --passphrase "${{ secrets.GPG_PASSPHRASE }}" to the line below.
-          GPG_OPTS="--batch --yes --pinentry-mode loopback --local-user 236328A7F2C2001E"
+          # Define passphrase variable from secrets (defaults to empty)
+          PASS="${{ secrets.GPG_PASSPHRASE }}"
 
           for pkg in *.pkg.tar.zst; do
             # 1. Sign the package
-            gpg $GPG_OPTS --detach-sign --no-armor "$pkg"
+            gpg --batch --yes --pinentry-mode loopback --local-user 236328A7F2C2001E --passphrase "$PASS" --detach-sign --no-armor "$pkg"
             
             # 2. Extract Metadata
             pkgname=$(bsdtar -xOf "$pkg" .PKGINFO | grep "^pkgname =" | cut -d' ' -f3)
@@ -70,7 +68,7 @@ jobs:
               echo "$(bsdtar -xOf "$pkg" .PKGINFO | grep "^size =" | cut -d' ' -f3)"
               echo ""
               echo "%PGPSIG%"
-              gpg $GPG_OPTS --detach-sign --stdout --no-armor "$pkg" | base64 | tr -d '\n'
+              gpg --batch --yes --pinentry-mode loopback --local-user 236328A7F2C2001E --passphrase "$PASS" --detach-sign --stdout --no-armor "$pkg" | base64 | tr -d '\n'
               echo ""
             } > "db_temp/$pkgname-$pkgver/desc"
           done
@@ -79,7 +77,7 @@ jobs:
           cd db_temp
           tar -c * | gzip -9 > ../hyprarch-repo.db.tar.gz
           cd ..
-          gpg $GPG_OPTS --detach-sign --no-armor hyprarch-repo.db.tar.gz
+          gpg --batch --yes --pinentry-mode loopback --local-user 236328A7F2C2001E --passphrase "$PASS" --detach-sign --no-armor hyprarch-repo.db.tar.gz
           
           # 4. Finalize
           cp hyprarch-repo.db.tar.gz hyprarch-repo.db
@@ -142,7 +140,7 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
           if ! git diff-index --quiet HEAD; then
-            git commit -m "Fix GPG trust error and finalize signed repo"
+            git commit -m "Cleanup script variables and finalize GPG signing"
             git push
           else
             echo "Nothing to change."
