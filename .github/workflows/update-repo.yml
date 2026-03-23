@@ -22,20 +22,33 @@ jobs:
       - name: Update Repository Database
         run: |
           cd x86_64
-          # Download a repo-add script that works on Ubuntu
-          curl -L https://raw.githubusercontent.com/anthraxx/pacman-repo-add/master/repo-add -o repo-add
-          chmod +x repo-add
+          # Remove old DB files
+          rm -f hyprarch-repo.db hyprarch-repo.db.tar.gz hyprarch-repo.files hyprarch-repo.files.tar.gz
           
-          # Use the real tool to build the database pacman expects
-          ./repo-add hyprarch-repo.db.tar.gz *.pkg.tar.zst
+          # Create a temporary directory for metadata
+          mkdir -p db_temp
           
-          # Clean up the tool
-          rm repo-add
+          # Extract metadata from each package and put it into the DB structure
+          for pkg in *.pkg.tar.zst; do
+            pkgname=$(bsdtar -xOf "$pkg" .PKGINFO | grep "^pkgname =" | cut -d' ' -f3)
+            pkgver=$(bsdtar -xOf "$pkg" .PKGINFO | grep "^pkgver =" | cut -d' ' -f3)
+            mkdir -p "db_temp/$pkgname-$pkgver"
+            bsdtar -xOf "$pkg" .PKGINFO > "db_temp/$pkgname-$pkgver/desc"
+            # Add file size and build date to desc
+            echo -e "\n%FILENAME%\n$pkg" >> "db_temp/$pkgname-$pkgver/desc"
+            echo -e "\n%CSIZE%\n$(stat -c%s "$pkg")" >> "db_temp/$pkgname-$pkgver/desc"
+          done
+          
+          # Compress the metadata into a real Arch DB
+          cd db_temp
+          tar -c * | gzip -9 > ../hyprarch-repo.db.tar.gz
+          cd ..
+          rm -rf db_temp
 
-          # Fix symlinks for GitHub Pages
-          rm -f hyprarch-repo.db hyprarch-repo.files
+          # Create the required symlinks/copies for GitHub Pages
           cp hyprarch-repo.db.tar.gz hyprarch-repo.db
-          cp hyprarch-repo.files.tar.gz hyprarch-repo.files
+          cp hyprarch-repo.db.tar.gz hyprarch-repo.files
+          cp hyprarch-repo.db.tar.gz hyprarch-repo.files.tar.gz
 
       - name: Generate Subfolder Index
         run: |
@@ -91,7 +104,7 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
           if ! git diff-index --quiet HEAD; then
-            git commit -m "Fixed YAML syntax and DB format"
+            git commit -m "Manual DB generation and fixed indices"
             git push
           else
             echo "Nothing to change."
